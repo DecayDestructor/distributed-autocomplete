@@ -1,17 +1,31 @@
 from fastapi import APIRouter, HTTPException
 from models.Tries import CompressedTrie as Trie
 import pickle
+from instances import trie
+from cache.main import get_suggestions, set_suggestions
+from prometheus_client import Counter
+
+autocomplete_requests = Counter("autocomplete_requests", "Total autocomplete requests")
+cache_hits = Counter("cache_hits", "Total cache hits")
+cache_misses = Counter("cache_misses", "Total cache misses")
 
 router = APIRouter()
-try:
-    trie = pickle.load(open("trie.pkl", "rb"))
-except FileNotFoundError:
-    trie = Trie()
 
 
 @router.get("/autocomplete")
 async def get_autocomplete(prefix: str):
-    suggestions = trie.autocomplete(prefix)
+    autocomplete_requests.inc()
+    suggestions = get_suggestions(prefix)
+    print(f"Suggestions from cache for prefix '{prefix}': {suggestions}")
+    if not suggestions:
+        # print(f"Cache miss for prefix: {prefix}")
+        cache_misses.inc()
+        suggestions = trie.autocomplete(prefix)
+        # print(f"Suggestions from trie for prefix '{prefix}': {suggestions}")
+        set_suggestions(prefix, suggestions)
+    else:
+        cache_hits.inc()
+        print(f"Cache hit for prefix: {prefix}")
     return {"prefix": prefix, "suggestions": suggestions}
 
 

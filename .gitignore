@@ -2,12 +2,21 @@
 __pycache__/
 *.py[cod]
 *.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
 .env
+.env.*
 venv/
 .venv/
 
 # Project specific
 trie.pkl
+*.pkl
+dump.rdb
+*.log
 
 # IDE
 .vscode/

@@ -12,7 +12,7 @@ class TrieNode:
 
 
 class CompressedTrie:
-    def __init__(self, k=6):
+    def __init__(self, k=3):
         self.root = TrieNode()
         self.k = k
 
