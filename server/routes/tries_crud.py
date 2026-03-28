@@ -57,10 +57,12 @@ async def update_freq(query: str, freq: int):
     found = trie.search(query)
     if found:
         trie.update_freq(query, trie.get_frequency(query) + freq)
+        pickle.dump(trie, open("trie.pkl", "wb"))
         print(f"Updated frequency of word '{query}' to {freq}")
         return {"message": f"Updated frequency of word '{query}' to {freq}"}
     else:
         trie.insert(query, freq=freq)
+        pickle.dump(trie, open("trie.pkl", "wb"))
         print(f"Inserted word '{query}' with frequency {freq}")
         return {"message": f"Inserted word '{query}' with frequency {freq}"}
     
