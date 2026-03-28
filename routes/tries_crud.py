@@ -37,3 +37,13 @@ async def populate_trie():
     f.close()
     pickle.dump(trie, open("trie.pkl", "wb"))
     return {"message": "Trie populated with words from google-10000-english-usa.txt"}
+
+log_number= 0
+@router.get("/create-log")
+async def create_log():
+    from services.kafka_produce import log_search_event
+    global log_number
+    log_number += 1
+
+    log_search_event("example search query"+str(log_number))
+    return {"message": "Log created for example search query"+str(log_number)}
