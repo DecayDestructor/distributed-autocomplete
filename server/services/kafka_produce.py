@@ -1,7 +1,9 @@
-from confluent_kafka import Producer
+import os
 
+from confluent_kafka import Producer
+print("KAFKA HOST:", os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'NOT FOUND'))
 config = {
-    'bootstrap.servers': 'localhost:45715',
+    'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:45715'),
 }
 
 producer =  Producer(config)

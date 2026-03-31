@@ -56,7 +56,7 @@ async def search_word(word: str): # this endpoint searches for a word, and logs 
 async def update_freq(query: str, freq: int):
     found = trie.search(query)
     if found:
-        trie.update_freq(query, trie.get_frequency(query) + freq)
+        trie.update_frequency(query, trie.get_frequency(query) + freq)
         pickle.dump(trie, open("trie.pkl", "wb"))
         print(f"Updated frequency of word '{query}' to {freq}")
         return {"message": f"Updated frequency of word '{query}' to {freq}"}

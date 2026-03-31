@@ -1,8 +1,11 @@
+import os
+
 from confluent_kafka import Consumer
 from producer import log_update_trie_event
 
-config={
-    'bootstrap.servers': 'localhost:45715',
+config = {
+    'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:45715'),
+
     'group.id': 'search-event-consumers',
     'auto.offset.reset': 'earliest'
 }
