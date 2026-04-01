@@ -52,7 +52,7 @@ async def search_word(word: str): # this endpoint searches for a word, and logs 
         print(f"Word '{word}' not found in trie, kafka has logged it")
         return {"message": f"Word '{word}' not found in trie, kafka has logged it"}
 
-@router.put("/update-freq")
+@router.put("/update_freq")
 async def update_freq(query: str, freq: int):
     found = trie.search(query)
     if found:

@@ -106,6 +106,7 @@ services:
       - SHARD2_URL=http://shard2:8000
       - SHARD3_URL=http://shard3:8000
       - SHARD4_URL=http://shard4:8000
+      - PYTHONUNBUFFERED=1
     depends_on:
       - shard1
       - shard2

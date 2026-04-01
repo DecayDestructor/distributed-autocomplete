@@ -1,5 +1,6 @@
 import os
 
+from dns.resolver import query
 from fastapi import FastAPI
 from hashlib import sha256
 from ring import HashRing, RangeRing, Router
@@ -21,17 +22,20 @@ prefix_router = Router()
 
 range1 = RangeRing('a', 'f')
 range1.add_node('shard1')
-range1.add_node("shard4") 
+range1.add_node('shard4')
 prefix_router.add_range(range1)
+prefix_router.register_shard('shard1', range1)
+prefix_router.register_shard('shard4', range1)
 
 range2 = RangeRing('g', 'm')
 range2.add_node('shard2')
 prefix_router.add_range(range2)
+prefix_router.register_shard('shard2', range2)
 
 range3 = RangeRing('n', 'z')
 range3.add_node('shard3')
 prefix_router.add_range(range3)
-
+prefix_router.register_shard('shard3', range3)
 import httpx
 
 SHARD_URLS = {
@@ -58,14 +62,14 @@ async def health():
 
 
 @app.put("/tries/update_frequency")
-async def update_frequency(word: str, frequency: int):
-    shard = prefix_router.get_node(word)
+async def update_frequency(query: str, frequency: int):
+    shard = prefix_router.get_node(query)
     if not shard:
-        return {"word": word, "found": False}
+        return {"query": query, "found": False}
 
     shard_url = SHARD_URLS.get(shard)
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"{shard_url}/tries/update_frequency", params={"query": word, "freq": frequency})
+        response = await client.put(f"{shard_url}/tries/update_freq", params={"query": query, "freq": frequency})
         return response.json()
     
 

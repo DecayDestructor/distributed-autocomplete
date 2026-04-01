@@ -24,7 +24,7 @@ def consume_trie_updates():
             print('Received message: {}'.format(msg.value().decode('utf-8')))
             payload = json.loads(msg.value().decode('utf-8'))
             print(f"User {payload['user_id']} updated trie with query '{payload['query']}' and freq {payload['freq']} at {payload['timestamp']}")
-            response = requests.put(f"{ROUTER_URL}/tries/update_frequency", params={"query": payload['query'], "freq": payload['freq']})
+            response = requests.put(f"{ROUTER_URL}/tries/update_frequency", params={"query": payload['query'], "frequency": payload['freq']})
             if response.status_code == 200:
                 print(f"Successfully updated frequency for query '{payload['query']}'")
             else:

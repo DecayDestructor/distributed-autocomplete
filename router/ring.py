@@ -58,16 +58,16 @@ class RangeRing:
 class Router:
     def __init__(self):
         self.ranges = []
-    def _hash(self, key: str) -> int:
-        return int(hashlib.md5(key.encode()).hexdigest(), 16)
-    
-    def get_range_by_shard(self, shard_name: str) -> RangeRing:
-        for r in self.ranges:
-            if shard_name in r.hash_ring.hash_ring.values():
-                return r
-        return None
+        self.shard_range_map = {}
+
     def add_range(self, range_ring: RangeRing):
         self.ranges.append(range_ring)
+
+    def register_shard(self, shard_name: str, range_ring: RangeRing):
+        self.shard_range_map[shard_name] = range_ring
+
+    def get_range_by_shard(self, shard_name: str) -> RangeRing:
+        return self.shard_range_map.get(shard_name, None)
 
     def get_node(self, key: str) -> str:
         for r in self.ranges:
