@@ -94,7 +94,6 @@ services:
       broker:
         condition: service_healthy
 
-      
   router:
     build:
       context: .
@@ -112,6 +111,32 @@ services:
       - shard2
       - shard3
       - shard4
+
+  router2:
+    build:
+      context: .
+      dockerfile: ./router/Dockerfile
+    environment:
+      - SHARD1_URL=http://shard1:8000
+      - SHARD2_URL=http://shard2:8000
+      - SHARD3_URL=http://shard3:8000
+      - SHARD4_URL=http://shard4:8000
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - shard1
+      - shard2
+      - shard3
+      - shard4
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - router
+      - router2
 
   consumer:
     build:
