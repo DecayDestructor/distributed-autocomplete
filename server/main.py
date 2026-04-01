@@ -10,3 +10,7 @@ app.include_router(tries_router, prefix="/tries", tags=["tries"])
 @app.get("/")
 async def read_root():
     return {"message": "Hello, World!"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}

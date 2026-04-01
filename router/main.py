@@ -4,7 +4,14 @@ from fastapi import FastAPI
 from hashlib import sha256
 from ring import HashRing, RangeRing, Router
 import bisect
-app = FastAPI()
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(health_check_loop())
+    yield
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def root():
@@ -72,3 +79,36 @@ async def search(word: str):
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{shard_url}/tries/search", params={"word": word})
         return response.json()
+    
+
+
+from contextlib import asynccontextmanager
+import asyncio
+
+dead_shards = set()  # ← outside the loop
+
+async def health_check_loop():
+    while True:
+        await asyncio.sleep(5)
+        for shard_name, shard_url in SHARD_URLS.items():
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(f"{shard_url}/health", timeout=2.0)
+                    await asyncio.sleep(2) 
+                    if response.status_code == 200:
+                        if shard_name in dead_shards:
+                            dead_shards.remove(shard_name)
+                            prefix_router.get_range_by_shard(shard_name).add_node(shard_name)
+                            print(f"Shard {shard_name} recovered. Added back to router.")
+                    else:
+                        if shard_name not in dead_shards:
+                            dead_shards.add(shard_name)
+                            prefix_router.get_range_by_shard(shard_name).remove_node(shard_name)
+                            print(f"Shard {shard_name} is down. Removed from router.")
+            except Exception:
+                if shard_name not in dead_shards:
+                    dead_shards.add(shard_name)
+                    prefix_router.get_range_by_shard(shard_name).remove_node(shard_name)
+                    print(f"Shard {shard_name} is down. Removed from router.")
+
+
