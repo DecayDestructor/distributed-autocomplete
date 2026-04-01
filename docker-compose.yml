@@ -30,31 +30,99 @@ services:
       retries: 5
       start_period: 30s
 
-  server:
+  shard1:
     build:
       context: .
       dockerfile: ./server/Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - REDIS_HOST=redis
       - KAFKA_BOOTSTRAP_SERVERS=broker:9092
+      - SHARD_NAME=shard1
     depends_on:
       redis:
         condition: service_started
       broker:
         condition: service_healthy
+
+  shard2:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - REDIS_HOST=redis
+      - KAFKA_BOOTSTRAP_SERVERS=broker:9092
+      - SHARD_NAME=shard2
+    depends_on:
+      redis:
+        condition: service_started
+      broker:
+        condition: service_healthy
+
+  shard3:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    ports:
+      - "8003:8000"
+    environment:
+      - REDIS_HOST=redis
+      - KAFKA_BOOTSTRAP_SERVERS=broker:9092
+      - SHARD_NAME=shard3
+    depends_on:
+      redis:
+        condition: service_started
+      broker:
+        condition: service_healthy
+
+  shard4:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      - REDIS_HOST=redis
+      - KAFKA_BOOTSTRAP_SERVERS=broker:9092
+      - SHARD_NAME=shard4
+    depends_on:
+      redis:
+        condition: service_started
+      broker:
+        condition: service_healthy
+
+      
+  router:
+    build:
+      context: .
+      dockerfile: ./router/Dockerfile
+    ports:
+      - "9000:9000"
+    environment:
+      - SHARD1_URL=http://shard1:8000
+      - SHARD2_URL=http://shard2:8000
+      - SHARD3_URL=http://shard3:8000
+      - SHARD4_URL=http://shard4:8000
+    depends_on:
+      - shard1
+      - shard2
+      - shard3
+      - shard4
+
   consumer:
     build:
       context: .
       dockerfile: ./kafka/Dockerfile
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=broker:9092
-      - SERVER_URL=http://server:8000
+      - ROUTER_URL=http://router:9000
     depends_on:
       broker:
         condition: service_healthy
-      server:
+      router:
         condition: service_started
 
   trie-updater:
@@ -63,11 +131,12 @@ services:
       dockerfile: ./trie-updates/Dockerfile
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=broker:9092
-      - SERVER_URL=http://server:8000
+      - ROUTER_URL=http://router:9000
     depends_on:
       broker:
         condition: service_healthy
-      server:
+      router:
         condition: service_started
+
 volumes:
   kafka_data:
