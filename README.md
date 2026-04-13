@@ -85,7 +85,8 @@ Query: "mic"
 | Routing | Custom consistent hash ring |
 | Observability | Prometheus + Grafana Cloud |
 | Containerization | Docker + Docker Compose |
-| Load Testing | Locust |
+| Testing | Pytest + Locust |
+| CI/CD | GitHub Actions |
 
 ---
 
@@ -183,6 +184,27 @@ GET http://localhost:8080/tries/search?word=apple
 ./ops.sh ldt
 # Open localhost:8089
 ```
+
+**Run unit tests:**
+```bash
+./ops.sh tst
+```
+
+### Ops Commands Reference (`./ops.sh`)
+
+| Command | Description |
+|---|---|
+| `up` | Starts the Docker compose stack in detached mode |
+| `dwn` | Tears down the Docker compose stack |
+| `rst` | Hard resets the stack (destroys volumes, removes images, deletes virtual env, and rebuilds) |
+| `hyd` | Hydrates the trie with 10,000 common English words |
+| `kil` | Simulates a node failure by killing `shard1` |
+| `rev` | Recovers the failed `shard1` |
+| `ldt` | Starts Locust load testing |
+| `tst` | Runs the Pytest unit test suite |
+| `log` | Tails all Docker container logs |
+| `lgr` | Tails only the router logs |
+| `env` | Manually provisions the Python virtual environment and installs dependencies |
 
 ---
 
