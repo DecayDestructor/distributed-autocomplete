@@ -82,8 +82,8 @@ class CompressedTrie:
     # ── search ───────────────────────────────────────────────────
 
     def search(self, word: str) -> bool:
-        node, _ = self._find_node(word)
-        return node is not None and node.is_end
+        node, text = self._find_node(word)
+        return node is not None and node.is_end and text == ""
 
     def autocomplete(self, prefix: str) -> list[str]:
         """Return top-k completions for a given prefix."""
@@ -200,8 +200,8 @@ class CompressedTrie:
         Return the frequency of a word in the trie.
         Returns 0 if the word doesn't exist.
         """
-        node, _ = self._find_node(word)
-        if node is None or not node.is_end:
+        node, text = self._find_node(word)
+        if node is None or not node.is_end or text != "":
             return 0
         return node.frequency
     # ── helpers ──────────────────────────────────────────────────
