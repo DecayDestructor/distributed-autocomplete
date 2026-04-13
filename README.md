@@ -10,7 +10,7 @@ Returns ranked autocomplete suggestions for a prefix in real time.
 
 ```
 GET /autocomplete?prefix=mic
-→ ["minecraft", "microsoft", "microphone", "microwave"]
+→ {"prefix": "mic", "suggestions": [[847, "minecraft"], [623, "microsoft"], [412, "microphone"], [201, "microwave"]]}
 ```
 
 Rankings update automatically based on what users actually search — type a word 50 times and watch it climb.
@@ -40,7 +40,7 @@ Shard → Kafka (search-events) → Consumer (30s aggregation) → Kafka (trie-u
 
 **Sharding strategy — Range + Consistent Hashing hybrid**
 
-Prefixes are first routed by first-character range (`a-f → shard1/shard4`, `g-m → shard2`, `n-z → shard3`). Within each range, consistent hashing distributes load across multiple nodes. Adding a new shard to a range only affects that range's keyspace — nothing else reshuffles.
+Prefixes are first routed by first-character range (e.g., `a-f`, `g-m`, `n-z`). Within each range, consistent hashing distributes load across multiple nodes. Shards dynamically register their assigned ranges into Redis on startup, allowing the router to discover and allocate them to the correct consistent hash ring on the fly. Adding a new shard to a range only affects that range's keyspace — nothing else reshuffles.
 
 **Why not pure consistent hashing?**
 
@@ -52,7 +52,7 @@ Trie frequency updates are asynchronous. A completed search logs to Kafka, gets 
 
 **Fault tolerance**
 
-Router runs a background health check every 5 seconds against all shards. Dead shard → removed from hash ring → traffic redistributes to remaining nodes automatically. Shard recovers → added back to ring. No manual intervention.
+Router runs a background health check loop every 5 seconds against all shards. If a shard fails 3 consecutive health checks, it is considered dead and removed from the hash ring → traffic redistributes to remaining nodes automatically. When a shard recovers, a single successful health check adds it back to the ring. No manual intervention.
 
 **Caching**
 
@@ -68,7 +68,7 @@ Compressed radix trie (not a basic trie). Instead of one node per character, who
 Query: "mic"
 → traverse to "mic" node
 → return node.topk sorted by frequency
-→ ["minecraft" (freq: 847), "microsoft" (freq: 623), "microphone" (freq: 412)]
+→ [[847, "minecraft"], [623, "microsoft"], [412, "microphone"]]
 ```
 
 ---
@@ -120,6 +120,8 @@ Live Grafana dashboard tracking:
 
 ```
 distributed-autocomplete/
+  ops.sh                     ← CLI tool for up/down/test/hydrate/fault scenarios
+  hydrate.py                 ← Injects the 10,000 common English words
   server/                    ← FastAPI trie shard (runs as shard1/2/3/4)
     models/Tries.py          ← Compressed radix trie implementation
     routes/tries_crud.py     ← Autocomplete, search, update endpoints
@@ -148,7 +150,7 @@ distributed-autocomplete/
 ```bash
 git clone https://github.com/DecayDestructor/distributed-autocomplete
 cd distributed-autocomplete
-docker compose up --build
+./ops.sh up
 ```
 
 All services start automatically in the correct order. System is ready when all containers show healthy.
@@ -159,22 +161,26 @@ GET http://localhost:8080/autocomplete?prefix=app
 GET http://localhost:8080/tries/search?word=apple
 ```
 
+**Load initial dictionary words:**
+```bash
+./ops.sh hyd
+```
+
 **Fault tolerance demo:**
 ```bash
 # Kill a shard
-docker stop distributed-autocomplete-shard1-1
+./ops.sh kil
 
 # Watch router detect and reroute (within 5-10 seconds)
-docker compose logs -f router
+./ops.sh lgr
 
 # Bring it back
-docker start distributed-autocomplete-shard1-1
+./ops.sh rev
 ```
 
 **Load test:**
 ```bash
-pip install locust
-locust -f locust/locustfile.py --host=http://localhost:8080
+./ops.sh ldt
 # Open localhost:8089
 ```
 
