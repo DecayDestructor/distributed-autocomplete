@@ -20,30 +20,35 @@ async def root():
 
 prefix_router = Router()
 
-range1 = RangeRing('a', 'f')
-range1.add_node('shard1')
-range1.add_node('shard4')
-prefix_router.add_range(range1)
-prefix_router.register_shard('shard1', range1)
-prefix_router.register_shard('shard4', range1)
-
-range2 = RangeRing('g', 'm')
-range2.add_node('shard2')
-prefix_router.add_range(range2)
-prefix_router.register_shard('shard2', range2)
-
-range3 = RangeRing('n', 'z')
-range3.add_node('shard3')
-prefix_router.add_range(range3)
-prefix_router.register_shard('shard3', range3)
 import httpx
+import redis
 
-SHARD_URLS = {
-    "shard1": os.getenv('SHARD1_URL', 'http://shard1:8000'),
-    "shard2": os.getenv('SHARD2_URL', 'http://shard2:8000'),
-    "shard3": os.getenv('SHARD3_URL', 'http://shard3:8000'),
-    "shard4": os.getenv('SHARD4_URL', 'http://shard4:8000')
-}
+SHARD_URLS = {}
+consecutive_failures = {}
+
+async def sync_shards_from_redis():
+    redis_host = os.getenv("REDIS_HOST", "redis")
+    try:
+        r = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
+        shards = r.hgetall("shards")
+        for shard_name, shard_range in shards.items():
+            if shard_name not in SHARD_URLS:
+                SHARD_URLS[shard_name] = f"http://{shard_name}:8000"
+                consecutive_failures[shard_name] = 0
+                start_char, end_char = shard_range.split("-")
+                rng = None
+                for existing_rng in prefix_router.ranges:
+                    if existing_rng.start == start_char and existing_rng.end == end_char:
+                        rng = existing_rng
+                        break
+                if not rng:
+                    rng = RangeRing(start_char, end_char)
+                    prefix_router.add_range(rng)
+                rng.add_node(shard_name)
+                prefix_router.register_shard(shard_name, rng)
+                print(f"add shd {shard_name} rng {shard_range}")
+    except Exception:
+        pass
 
 @app.get("/autocomplete")
 async def autocomplete(prefix: str):
@@ -93,26 +98,25 @@ dead_shards = set()  # ← outside the loop
 
 async def health_check_loop():
     while True:
+        await sync_shards_from_redis()
         await asyncio.sleep(5)
-        for shard_name, shard_url in SHARD_URLS.items():
+        for shard_name, shard_url in list(SHARD_URLS.items()):
             try:
                 async with httpx.AsyncClient() as client:
                     response = await client.get(f"{shard_url}/health", timeout=2.0)
-                    await asyncio.sleep(2) 
                     if response.status_code == 200:
+                        consecutive_failures[shard_name] = 0
                         if shard_name in dead_shards:
                             dead_shards.remove(shard_name)
                             prefix_router.get_range_by_shard(shard_name).add_node(shard_name)
                             print(f"Shard {shard_name} recovered. Added back to router.")
                     else:
-                        if shard_name not in dead_shards:
-                            dead_shards.add(shard_name)
-                            prefix_router.get_range_by_shard(shard_name).remove_node(shard_name)
-                            print(f"Shard {shard_name} is down. Removed from router.")
+                        consecutive_failures[shard_name] = consecutive_failures.get(shard_name, 0) + 1
             except Exception:
-                if shard_name not in dead_shards:
-                    dead_shards.add(shard_name)
-                    prefix_router.get_range_by_shard(shard_name).remove_node(shard_name)
-                    print(f"Shard {shard_name} is down. Removed from router.")
+                consecutive_failures[shard_name] = consecutive_failures.get(shard_name, 0) + 1
+            if consecutive_failures.get(shard_name, 0) >= 3 and shard_name not in dead_shards:
+                dead_shards.add(shard_name)
+                prefix_router.get_range_by_shard(shard_name).remove_node(shard_name)
+                print(f"Shard {shard_name} is down. Removed from router.")
 
 

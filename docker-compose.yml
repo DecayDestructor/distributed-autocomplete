@@ -7,6 +7,8 @@ services:
   broker:
     image: apache/kafka:latest
     container_name: broker
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     ports:
       - "45715:9092"
     environment:
@@ -40,6 +42,7 @@ services:
       - REDIS_HOST=redis
       - KAFKA_BOOTSTRAP_SERVERS=broker:9092
       - SHARD_NAME=shard1
+      - SHARD_RANGE=a-f
     depends_on:
       redis:
         condition: service_started
@@ -56,6 +59,7 @@ services:
       - REDIS_HOST=redis
       - KAFKA_BOOTSTRAP_SERVERS=broker:9092
       - SHARD_NAME=shard2
+      - SHARD_RANGE=g-m
     depends_on:
       redis:
         condition: service_started
@@ -72,6 +76,7 @@ services:
       - REDIS_HOST=redis
       - KAFKA_BOOTSTRAP_SERVERS=broker:9092
       - SHARD_NAME=shard3
+      - SHARD_RANGE=n-z
     depends_on:
       redis:
         condition: service_started
@@ -88,6 +93,7 @@ services:
       - REDIS_HOST=redis
       - KAFKA_BOOTSTRAP_SERVERS=broker:9092
       - SHARD_NAME=shard4
+      - SHARD_RANGE=a-f
     depends_on:
       redis:
         condition: service_started
@@ -101,32 +107,28 @@ services:
     ports:
       - "9000:9000"
     environment:
-      - SHARD1_URL=http://shard1:8000
-      - SHARD2_URL=http://shard2:8000
-      - SHARD3_URL=http://shard3:8000
-      - SHARD4_URL=http://shard4:8000
+      - REDIS_HOST=redis
       - PYTHONUNBUFFERED=1
     depends_on:
       - shard1
       - shard2
       - shard3
       - shard4
+      - redis
 
   router2:
     build:
       context: .
       dockerfile: ./router/Dockerfile
     environment:
-      - SHARD1_URL=http://shard1:8000
-      - SHARD2_URL=http://shard2:8000
-      - SHARD3_URL=http://shard3:8000
-      - SHARD4_URL=http://shard4:8000
+      - REDIS_HOST=redis
       - PYTHONUNBUFFERED=1
     depends_on:
       - shard1
       - shard2
       - shard3
       - shard4
+      - redis
 
   nginx:
     image: nginx:alpine
